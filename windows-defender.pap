@@ -1,0 +1,29 @@
+# Script to change desktop wallpaper
+$ImagePath = ".\windows-defender.png"  # Replace with full path if the image is elsewhere (e.g., "C:\Users\YourName\Pictures\windows-defender.png")
+
+# Function to set wallpaper
+function Set-Wallpaper {
+    param (
+        [string]$Image
+    )
+    Add-Type -TypeDefinition @"
+    using System;
+    using System.Runtime.InteropServices;
+    public class Wallpaper {
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        public static extern int SystemParametersInfo(int uAction, int uParam, string lpvParam, int fuWinIni);
+    }
+"@
+    $SPI_SETDESKWALLPAPER = 0x0014
+    $UpdateIniFile = 0x01
+    $SendWinIniChange = 0x02
+    [Wallpaper]::SystemParametersInfo($SPI_SETDESKWALLPAPER, 0, $Image, $UpdateIniFile -bor $SendWinIniChange) | Out-Null
+}
+
+# Check if the image file exists
+if (Test-Path $ImagePath) {
+    Set-Wallpaper -Image $ImagePath
+    Write-Output "Wallpaper changed to $ImagePath successfully."
+} else {
+    Write-Output "Error: Image file not found at $ImagePath. Please ensure the file exists and provide the correct path."
+}
