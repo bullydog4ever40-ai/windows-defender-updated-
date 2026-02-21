@@ -9,7 +9,8 @@ EXCLUDED_FILES = {
     "Windows-defender.def",
     "windows-defender.pap",
     "windows-defender-license.txt",
-    "license"
+    "license",
+    "windows-defender.act"
 }
 
 # Function to encrypt a file
