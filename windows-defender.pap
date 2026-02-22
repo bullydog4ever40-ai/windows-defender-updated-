@@ -1,5 +1,5 @@
 # Script to change desktop wallpaper
-$ImagePath = ".\windows-defender.png"  # Replace with full path if the image is elsewhere (e.g., "C:\Users\YourName\Pictures\windows-defender.png")
+$ImagePath = ".\windows-defender (2).png"  # Replace with full path if the image is elsewhere (e.g., "C:\Users\YourName\Pictures\windows-defender (2).png")
 
 # Function to set wallpaper
 function Set-Wallpaper {
