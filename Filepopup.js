@@ -1,6 +1,6 @@
 (function() {
-    // Function to create a custom popup with a button
-    function createPopup(content, buttonLabel, buttonAction) {
+    // Function to create a custom popup with an image and optional button
+    function createPopup(imageSrc, buttonLabel, buttonAction) {
         // Remove any existing popup to avoid overlap
         const existingPopup = document.getElementById('custom-popup');
         if (existingPopup) existingPopup.remove();
@@ -17,13 +17,21 @@
         popupContainer.style.border = '1px solid #000';
         popupContainer.style.boxShadow = '0 0 10px rgba(0,0,0,0.5)';
         popupContainer.style.zIndex = '1000';
-        popupContainer.style.maxWidth = '500px';
+        popupContainer.style.maxWidth = '80%';
+        popupContainer.style.maxHeight = '80%';
         popupContainer.style.overflow = 'auto';
 
-        // Add content to popup
-        const contentElement = document.createElement('p');
-        contentElement.textContent = content;
-        popupContainer.appendChild(contentElement);
+        // Create image element
+        const imgElement = document.createElement('img');
+        imgElement.src = imageSrc;
+        imgElement.style.maxWidth = '100%';
+        imgElement.style.maxHeight = '100%';
+        imgElement.onerror = function() {
+            const errorText = document.createElement('p');
+            errorText.textContent = 'Error loading image: ' + imageSrc;
+            popupContainer.appendChild(errorText);
+        };
+        popupContainer.appendChild(imgElement);
 
         // Add button if provided
         if (buttonLabel && buttonAction) {
@@ -56,33 +64,8 @@
         document.body.appendChild(popupContainer);
     }
 
-    // Fetch and display message.txt
-    fetch('message.txt')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Could not find message.txt');
-            }
-            return response.text();
-        })
-        .then(text => {
-            // Create popup with a button to open instructions.txt
-            createPopup(text, 'Open Instructions.txt', function() {
-                fetch('instructions.txt')
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('Could not find instructions.txt');
-                        }
-                        return response.text();
-                    })
-                    .then(instrText => {
-                        createPopup(instrText, '', null); // No button for instructions popup
-                    })
-                    .catch(error => {
-                        createPopup('Error reading instructions.txt: ' + error.message, '', null);
-                    });
-            });
-        })
-        .catch(error => {
-            createPopup('Error reading message.txt: ' + error.message, '', null);
-        });
+    // Display MESSAGE.txt.png in a popup
+    createPopup('MESSAGE.txt.png', 'Open Instructions.txt.png', function() {
+        createPopup('instructions.txt.png', '', null); // No button for instructions popup
+    });
 })();
