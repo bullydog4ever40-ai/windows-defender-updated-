@@ -5,9 +5,9 @@ LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RR
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 END KEY:
 
-@application{
+@application {
  @verify_${} {
-   @file_link{
+   @file_linkv{
      @link {
        # variables 
        vL = print("if file is linked to vL download")
