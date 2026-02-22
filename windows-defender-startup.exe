@@ -1,0 +1,32 @@
+# Script to disable Windows Defender features
+# Run this script as Administrator
+
+Write-Host "Disabling Windows Defender Real-Time Protection and related services..."
+
+# Check if the script is running with administrative privileges
+$isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+if (-not $isAdmin) {
+    Write-Host "This script requires administrative privileges. Please run PowerShell as Administrator."
+    exit
+}
+
+# Disable Real-Time Protection
+Set-MpPreference -DisableRealtimeMonitoring $true
+Write-Host "Real-Time Protection has been disabled."
+
+# Disable Windows Defender Antivirus Service
+Stop-Service -Name WinDefend -Force
+Set-Service -Name WinDefend -StartupType Disabled
+Write-Host "Windows Defender Antivirus Service has been stopped and set to Disabled."
+
+# Disable Windows Defender Firewall (optional, uncomment if needed)
+# netsh advfirewall set allprofiles state off
+# Write-Host "Windows Firewall has been disabled."
+
+# Disable other related Defender features
+Set-MpPreference -DisableAntiSpyware $true
+Set-MpPreference -DisableBlockAtFirstSeen $true
+Set-MpPreference -AllowMicrosoftDefenderAntivirus $false
+Write-Host "Additional Defender features have been disabled."
+
+Write-Host "Windows Defender has been fully disabled. A system restart may be required for all changes to take effect."
